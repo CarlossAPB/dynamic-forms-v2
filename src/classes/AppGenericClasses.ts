@@ -1,3 +1,4 @@
+import { CdkDropList } from "@angular/cdk/drag-drop"
 import { FormUtils } from "src/utils/FormUtils"
 import { GlobalUtils } from "src/utils/GlobalUtils"
 
@@ -11,19 +12,22 @@ export enum AppFormFieldType {
 
 export interface AppGenericSelectableOption {
   label: string,
-  value: any
+  value: any,
+  type?: string
 }
 
 export interface AppFormFieldOptionalParams {
+  value?: any
   placeholder?: string
   required?: boolean
   min?: number
-  max?: number | null
-  maxLength?: number | null
+  max?: number | undefined
+  maxLength?: number
   disabled?: boolean
   readOnly?: boolean
   multiline?: boolean
   htmlClass?: string
+  helpText?: string
 }
 
 export class AppFormField implements AppFormFieldOptionalParams {
@@ -31,15 +35,17 @@ export class AppFormField implements AppFormFieldOptionalParams {
   label: string
   controlType: AppFormFieldType
   dataType: AppFormFieldDataType
+  value!: any
+  required!: boolean
+  disabled!: boolean
+  readOnly!: boolean
   placeholder?: string
-  required?: boolean
   min?: number
-  max?: number | null
-  maxLength?: number | null
-  disabled?: boolean
-  readOnly?: boolean
+  max!: number | undefined
+  maxLength?: number
   multiline?: boolean
   htmlClass?: string
+  helpText?: string
 
   constructor(key: string, label: string, controlType: AppFormFieldType, dataType: AppFormFieldDataType, optionalParams?: AppFormFieldOptionalParams) {
     this.key = key
@@ -74,7 +80,6 @@ export class AppFormGroup {
 
 export class AppFormTemplate {
   groups: AppFormGroup[]
-  formLayout: AppFormLayout = new AppFormLayout(this)
 
   constructor(groups: AppFormGroup[]) {
     this.groups = groups
@@ -86,11 +91,6 @@ export class AppFormTemplate {
 
   getField(key: string) {
     return FormUtils.getField(this.groups, key)
-  }
-
-  set layout(layout: AppFormGroupLayout[]) {
-    this.formLayout.groups = layout
-    this.groups = this.formLayout.buildTemplate()
   }
 }
 
@@ -139,3 +139,60 @@ export class AppFormLayout {
     return groups
   }
 }
+
+export class DragDropAction {
+  previousContainer!: CdkDropList<any[]>
+  previousIndex: number = 0
+  currentContainer!: CdkDropList<any[]>
+  currentIndex: number = 0
+
+  constructor(
+    previousContainer: CdkDropList<any[]>,
+    previousIndex: number,
+    currentContainer: CdkDropList<any[]>,
+    currentIndex: number
+  ) {
+    this.previousContainer = previousContainer
+    this.previousIndex = previousIndex
+    this.currentContainer = currentContainer
+    this.currentIndex = currentIndex
+  }
+}
+
+export type ArrayActionType = 'INSERT' | 'DELETE'
+
+export class ArrayAction {
+  item: any
+  container: any[]
+  idx: number
+  type: ArrayActionType
+
+  constructor(item: any, container: any[], idx: number, type: ArrayActionType) {
+    this.item = item
+    this.container = container
+    this.idx = idx
+    this.type = type
+  }
+}
+
+export class ObjectAction<T> {
+  previous: T
+  current: T
+
+  constructor(previous: T, current: T) {
+    this.previous = previous
+    this.current = current
+  }
+}
+
+export class FormGroupAction extends ObjectAction<AppFormGroup> { }
+export class FormFieldAction extends ObjectAction<AppFormField> { }
+
+export class ActionHistory<T> {
+  undoActions: T[] = []
+  redoActions: T[] = []
+}
+
+export type DynamicFormAction = DragDropAction | ArrayAction | FormGroupAction | FormFieldAction
+export type DynamicFormActionHistory = ActionHistory<DynamicFormAction>
+

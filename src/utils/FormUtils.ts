@@ -14,8 +14,6 @@ export class FormUtils {
         })
       })
     })
-    console.log(fields);
-
     return fields
   }
 

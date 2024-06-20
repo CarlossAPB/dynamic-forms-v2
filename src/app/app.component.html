@@ -1,299 +1,672 @@
-<form class="container needs-validation py-3">
-  <h1>Formulario Dinamico</h1>
-  <div
-    cdkDropList
-    [cdkDropListData]="formTemplate.groups"
-    (cdkDropListDropped)="drop($event)"
-    cdkDropListGroup
-  >
-    <ng-container *ngFor="let group of formTemplate.groups">
-      <div
-        class="card mb-3"
-        [ngClass]="!group.grid.rows.length ? 'border border-danger' : ''"
-        cdkDrag
-      >
-        <div class="card-header" *ngIf="group.title">
-          <div class="d-flex gap-2 align-items-center">
-            <div class="d-flex px-1">
-              <i class="fa-solid fa-arrows-up-down-left-right"></i>
-            </div>
-            <div class="flex-fill">
-              <h5>{{ group.title }}</h5>
-            </div>
+<div class="flex flex-column overflow-hidden h-screen py-2">
+  <p-toast position="top-center" key="tc" [life]="1000"></p-toast>
+  <div class="border-bottom-1 border-300">
+    <div class="flex align-items-center px-3">
+      <div class="flex-grow-1">
+        <h1>Formulario Dinamico</h1>
+      </div>
+      <div class="flex flex-wrap justify-content-center gap-2">
+        <div
+          class="flex flex-wrap justify-content-center gap-2"
+          *ngIf="!preview"
+        >
+          <button
+            pButton
+            type="button"
+            class="p-button-primary p-button-text"
+            (click)="save()"
+            pTooltip="Guardar"
+            tooltipPosition="bottom"
+            [disabled]="
+              !actionHistory.undoActions.length &&
+              !actionHistory.redoActions.length
+            "
+          >
+            <i class="pi pi-save"></i>
+          </button>
+          <div class="flex flex-wrap justify-content-center gap-2">
+            <button
+              pButton
+              type="button"
+              class="p-button-primary p-button-text"
+              (click)="undo()"
+              pTooltip="Revertir"
+              tooltipPosition="bottom"
+              [disabled]="!actionHistory.undoActions.length"
+            >
+              <i class="pi pi-undo"></i>
+            </button>
+            <button
+              pButton
+              type="button"
+              class="p-button-primary p-button-text"
+              (click)="redo()"
+              pTooltip="Rehacer"
+              tooltipPosition="bottom"
+              [disabled]="!actionHistory.redoActions.length"
+            >
+              <i class="pi pi-refresh"></i>
+            </button>
           </div>
         </div>
-        <div class="card-body">
-          <div
-            cdkDropList
-            [cdkDropListData]="group.grid.rows"
-            (cdkDropListDropped)="drop($event)"
-            cdkDropListGroup
-            style="min-height: 70px"
+        <div class="flex">
+          <p-toggleButton
+            [(ngModel)]="preview"
+            onLabel="Previsualizar"
+            offLabel="Previsualizar"
+            [style]="{ width: '10em' }"
+          ></p-toggleButton>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="flex-grow-1 overflow-hidden px-3">
+    <p-scrollPanel styleClass="w-full h-full px-1 py-2">
+      <form #dataForm="ngForm" (ngSubmit)="onSubmit()" *ngIf="!preview">
+        <div
+          cdkDropList
+          [cdkDropListData]="formTemplate.groups"
+          (cdkDropListDropped)="drop($event)"
+          cdkDropListGroup
+        >
+          <ng-container
+            *ngFor="let group of formTemplate.groups; index as groupIdx"
           >
-            <ng-container *ngFor="let row of group.grid.rows; index as rowIdx">
-              <div
-                class="d-flex gap-2 align-items-center"
-                style="--bs-border-opacity: 0.5"
-                [ngClass]="
-                  !row.cols.length ? 'border border-danger rounded mb-3' : ''
+            <div class="mb-3">
+              <p-card
+                [style]="{ border: !group.grid.rows.length ? '1px solid' : '' }"
+                [styleClass]="
+                  !group.grid.rows.length
+                    ? 'border-red-500 border-round mb-3'
+                    : ''
                 "
                 cdkDrag
               >
-                <div class="d-flex px-2">
-                  <i class="fa-solid fa-sort"></i>
-                </div>
-                <div class="flex-fill">
+                <ng-template pTemplate="header">
+                  <ng-container *ngIf="group.title">
+                    <div class="flex gap-2 align-items-center px-3 cursor-move">
+                      <div class="flex">
+                        <i class="pi pi-arrows-alt"></i>
+                      </div>
+                      <div class="flex-grow-1">
+                        <h2>{{ group.title }}</h2>
+                      </div>
+                      <div class="flex">
+                        <button
+                          pButton
+                          type="button"
+                          class="p-button-primary p-button-text"
+                          (click)="onEditGroup(group)"
+                        >
+                          <i class="pi pi-pencil"></i>
+                        </button>
+                        <button
+                          pButton
+                          type="button"
+                          class="p-button-danger p-button-text"
+                          (click)="removeGroup(groupIdx)"
+                        >
+                          <i class="pi pi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </ng-container>
+                </ng-template>
+                <ng-template pTemplate="body">
                   <div
                     cdkDropList
-                    cdkDropListOrientation="horizontal"
-                    [cdkDropListData]="row.cols"
+                    [cdkDropListData]="group.grid.rows"
                     (cdkDropListDropped)="drop($event)"
-                    class="row"
                     cdkDropListGroup
                     style="min-height: 70px"
                   >
-                    <ng-container *ngFor="let col of row.cols">
-                      <div class="col" cdkDrag>
-                        <div class="mb-3" *ngIf="col.field">
-                          <label
-                            for="exampleFormControlInput1"
-                            class="form-label"
-                            >{{ col.field.label }}</label
+                    <ng-container
+                      *ngFor="let row of group.grid.rows; index as rowIdx"
+                    >
+                      <div
+                        [style]="{
+                          border: !row.cols.length ? '1px solid' : ''
+                        }"
+                        class="flex gap-2 align-items-center"
+                        [ngClass]="
+                          !row.cols.length
+                            ? 'border-red-500 border-round mb-3'
+                            : ''
+                        "
+                        cdkDrag
+                      >
+                        <div class="flex px-3 cursor-move">
+                          <i class="pi pi-arrows-v"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                          <div
+                            [id]="'group-' + groupIdx + '-row-' + rowIdx"
+                            cdkDropList
+                            cdkDropListOrientation="horizontal"
+                            [cdkDropListData]="row.cols"
+                            (cdkDropListDropped)="drop($event)"
+                            [cdkDropListConnectedTo]="connectedLists"
+                            class="grid"
+                            cdkDropListGroup
+                            style="min-height: 70px"
                           >
-                          <div class="input-group">
-                            <ng-container [ngSwitch]="col.field.dataType">
-                              <ng-container *ngSwitchCase="'TEXT'">
-                                <ng-container *ngIf="!col.field.multiline">
-                                  <input
-                                    [type]="col.field.controlType"
-                                    class="form-control"
-                                    [placeholder]="col.field.placeholder"
-                                    [required]="col.field.required"
-                                    [disabled]="col.field.disabled"
-                                    [readOnly]="col.field.readOnly"
-                                  />
-                                </ng-container>
-                                <ng-container *ngIf="col.field.multiline">
-                                  <textarea
-                                    class="form-control"
-                                    rows="3"
-                                  ></textarea>
-                                </ng-container>
-                              </ng-container>
-                              <ng-container *ngSwitchCase="'NUMBER'">
-                                <input
-                                  [type]="col.field.controlType"
-                                  class="form-control"
-                                  [placeholder]="col.field.placeholder"
-                                  [required]="col.field.required"
-                                  [min]="col.field.min"
-                                  [max]="col.field.max"
-                                  [disabled]="col.field.disabled"
-                                  [readOnly]="col.field.readOnly"
-                                />
-                              </ng-container>
-                            </ng-container>
-                            <button
-                              class="btn btn-outline-primary"
-                              type="button"
-                              id="button-addon2"
-                              data-bs-toggle="modal"
-                              data-bs-target="#exampleModal"
-                              (click)="onAddFieldToCol(col)"
+                            <ng-container
+                              *ngFor="let col of row.cols; index as columnIdx"
                             >
-                              <i class="fa-solid fa-edit"></i>
-                            </button>
+                              <div class="col" cdkDrag>
+                                <div
+                                  class="flex flex-column gap-2 w-full mb-3"
+                                  *ngIf="col.field"
+                                >
+                                  <label>{{ col.field.label }}</label>
+                                  <p-inputGroup>
+                                    <ng-container
+                                      [ngSwitch]="col.field.dataType"
+                                    >
+                                      <ng-container *ngSwitchCase="'TEXT'">
+                                        <ng-container
+                                          *ngIf="!col.field.multiline"
+                                        >
+                                          <input
+                                            pInputText
+                                            [type]="col.field.controlType"
+                                            class="ng-dirty"
+                                            [ngClass]="col.field.htmlClass"
+                                            [placeholder]="
+                                              col.field.placeholder
+                                            "
+                                            [required]="col.field.required"
+                                            [disabled]="col.field.disabled"
+                                            [readOnly]="col.field.readOnly"
+                                            [maxLength]="col.field.maxLength"
+                                            [(ngModel)]="col.field.value"
+                                            [ngModelOptions]="{
+                                              standalone: true
+                                            }"
+                                          />
+                                        </ng-container>
+                                        <ng-container
+                                          *ngIf="col.field.multiline"
+                                        >
+                                          <textarea
+                                            pInputTextarea
+                                            class="w-full ng-dirty"
+                                            [ngClass]="col.field.htmlClass"
+                                            rows="3"
+                                            [placeholder]="
+                                              col.field.placeholder
+                                            "
+                                            [required]="col.field.required"
+                                            [disabled]="col.field.disabled"
+                                            [readOnly]="col.field.readOnly"
+                                            [maxLength]="col.field.maxLength"
+                                            [(ngModel)]="col.field.value"
+                                            [ngModelOptions]="{
+                                              standalone: true
+                                            }"
+                                          ></textarea>
+                                        </ng-container>
+                                      </ng-container>
+                                      <ng-container *ngSwitchCase="'NUMBER'">
+                                        <p-inputNumber
+                                          [showButtons]="true"
+                                          class="w-full ng-dirty"
+                                          styleClass="w-full ng-dirty"
+                                          inputStyleClass="w-full ng-dirty"
+                                          [ngClass]="col.field.htmlClass"
+                                          [placeholder]="col.field.placeholder"
+                                          [required]="col.field.required"
+                                          [min]="col.field.min"
+                                          [max]="col.field.max"
+                                          [disabled]="col.field.disabled"
+                                          [readonly]="col.field.readOnly"
+                                          [(ngModel)]="col.field.value"
+                                          [ngModelOptions]="{
+                                            standalone: true
+                                          }"
+                                        ></p-inputNumber>
+                                      </ng-container>
+                                    </ng-container>
+                                    <button
+                                      pButton
+                                      class="p-button-primary p-button-text"
+                                      type="button"
+                                      (click)="onEditField(col)"
+                                    >
+                                      <i class="pi pi-pencil"></i>
+                                    </button>
+                                    <button
+                                      pButton
+                                      type="button"
+                                      class="p-button-danger p-button-text"
+                                      (click)="
+                                        removeColumn(row.cols, columnIdx)
+                                      "
+                                    >
+                                      <i class="pi pi-trash"></i>
+                                    </button>
+                                  </p-inputGroup>
+                                  <small>
+                                    {{ col.field.helpText }}
+                                  </small>
+                                </div>
+                              </div>
+                            </ng-container>
                           </div>
+                        </div>
+                        <div
+                          class="flex gap-2 px-2 text-danger"
+                          *ngIf="!row.cols.length"
+                        >
+                          <button
+                            pButton
+                            type="button"
+                            class="p-button-success"
+                            (click)="addFieldToRow(row)"
+                          >
+                            Crear campo
+                            <i class="pi pi-plus ml-2"></i>
+                          </button>
+                          <button
+                            pButton
+                            type="button"
+                            class="p-button-danger p-button-text"
+                            (click)="removeRow(group.grid.rows, rowIdx)"
+                          >
+                            <i class="pi pi-trash"></i>
+                          </button>
                         </div>
                       </div>
                     </ng-container>
                   </div>
+                  <div class="flex gap-2">
+                    <div class="flex-grow-1">
+                      <button
+                        pButton
+                        type="button"
+                        class="p-button-primary w-full flex justify-content-center"
+                        (click)="addRow(group.grid.rows)"
+                      >
+                        Crear espacio
+                        <i class="pi pi-plus ml-2"></i>
+                      </button>
+                    </div>
+                    <div class="flex-grow-1">
+                      <button
+                        pButton
+                        type="button"
+                        class="p-button-success w-full flex justify-content-center"
+                        (click)="addRowWithField(group.grid.rows)"
+                      >
+                        Crear campo
+                        <i class="pi pi-plus ml-2"></i>
+                      </button>
+                    </div>
+                  </div>
+                </ng-template>
+              </p-card>
+            </div>
+          </ng-container>
+          <button
+            pButton
+            type="button"
+            class="p-button-success w-full flex justify-content-center"
+            (click)="addGroup()"
+          >
+            Crear grupo
+            <i class="pi pi-plus ml-2"></i>
+          </button>
+        </div>
+      </form>
+      <form #dataForm="ngForm" (ngSubmit)="onSubmit()" *ngIf="preview">
+        <ng-container *ngFor="let group of formTemplate.groups">
+          <div class="mb-3">
+            <p-card>
+              <ng-template pTemplate="header">
+                <ng-container *ngIf="group.title">
+                  <div class="flex gap-2 align-items-center px-3">
+                    <div class="flex-grow-1">
+                      <h2>{{ group.title }}</h2>
+                    </div>
+                  </div>
+                </ng-container>
+              </ng-template>
+              <ng-template pTemplate="body">
+                <ng-container *ngFor="let row of group.grid.rows">
+                  <div class="flex gap-2 align-items-center">
+                    <div class="flex-grow-1">
+                      <div class="grid">
+                        <ng-container *ngFor="let col of row.cols">
+                          <div class="col">
+                            <div
+                              class="flex flex-column gap-2 w-full mb-3"
+                              *ngIf="col.field"
+                            >
+                              <label>{{ col.field.label }}</label>
+                              <ng-container [ngSwitch]="col.field.dataType">
+                                <ng-container *ngSwitchCase="'TEXT'">
+                                  <ng-container *ngIf="!col.field.multiline">
+                                    <input
+                                      pInputText
+                                      [type]="col.field.controlType"
+                                      class="ng-dirty"
+                                      [ngClass]="col.field.htmlClass"
+                                      [placeholder]="col.field.placeholder"
+                                      [required]="col.field.required"
+                                      [disabled]="col.field.disabled"
+                                      [readOnly]="col.field.readOnly"
+                                      [maxLength]="col.field.maxLength"
+                                      [(ngModel)]="col.field.value"
+                                      [ngModelOptions]="{ standalone: true }"
+                                    />
+                                  </ng-container>
+                                  <ng-container *ngIf="col.field.multiline">
+                                    <textarea
+                                      pInputTextarea
+                                      class="w-full ng-dirty"
+                                      [ngClass]="col.field.htmlClass"
+                                      rows="3"
+                                      [placeholder]="col.field.placeholder"
+                                      [required]="col.field.required"
+                                      [disabled]="col.field.disabled"
+                                      [readOnly]="col.field.readOnly"
+                                      [maxLength]="col.field.maxLength"
+                                      [(ngModel)]="col.field.value"
+                                      [ngModelOptions]="{ standalone: true }"
+                                    ></textarea>
+                                  </ng-container>
+                                </ng-container>
+                                <ng-container *ngSwitchCase="'NUMBER'">
+                                  <p-inputNumber
+                                    [showButtons]="true"
+                                    class="w-full ng-dirty"
+                                    styleClass="w-full ng-dirty"
+                                    inputStyleClass="w-full ng-dirty"
+                                    [ngClass]="col.field.htmlClass"
+                                    [placeholder]="col.field.placeholder"
+                                    [required]="col.field.required"
+                                    [min]="col.field.min"
+                                    [max]="col.field.max"
+                                    [disabled]="col.field.disabled"
+                                    [readonly]="col.field.readOnly"
+                                    [(ngModel)]="col.field.value"
+                                    [ngModelOptions]="{ standalone: true }"
+                                  ></p-inputNumber>
+                                </ng-container>
+                              </ng-container>
+                              <small>
+                                {{ col.field.helpText }}
+                              </small>
+                            </div>
+                          </div>
+                        </ng-container>
+                      </div>
+                    </div>
+                  </div>
+                </ng-container>
+              </ng-template>
+            </p-card>
+          </div>
+        </ng-container>
+      </form>
+    </p-scrollPanel>
+  </div>
+</div>
+
+<p-dialog
+  header="Edición de grupo"
+  [(visible)]="showGroupForm"
+  [modal]="true"
+  [style]="{ width: '50vw', height: '100%' }"
+  [draggable]="false"
+  [resizable]="false"
+  [contentStyle]="{ overflow: 'hidden', padding: '.7rem' }"
+  [dismissableMask]="true"
+  [maximizable]="true"
+  (onHide)="onGroupActionEnd()"
+>
+  <ng-container *ngIf="groupSelected">
+    <div class="flex flex-column h-full">
+      <div class="flex-grow-1 overflow-hidden">
+        <p-scrollPanel styleClass="w-full h-full">
+          <div class="flex flex-column gap-2 w-full mb-3">
+            <label>Titulo</label>
+            <input pInputText type="text" [(ngModel)]="groupSelected.title" />
+          </div>
+        </p-scrollPanel>
+      </div>
+      <div class="flex flex-column">
+        <h5 class="mb-3">Preview</h5>
+        <p-card>
+          <ng-template pTemplate="header">
+            <ng-container *ngIf="groupSelected.title">
+              <div class="flex gap-2 align-items-center px-3">
+                <div class="flex-grow-1">
+                  <h2>{{ groupSelected.title }}</h2>
                 </div>
-                <div class="d-flex gap-2 px-2 text-danger">
-                  <button
-                    *ngIf="!row.cols.length"
-                    type="button"
-                    class="btn btn-outline-success"
-                    (click)="addFieldToRow(row)"
-                  >
-                    Crear campo <i class="fa-solid fa-plus"></i>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-outline-danger"
-                    (click)="removeRow(group.grid.rows, rowIdx)"
-                  >
-                    <i class="fa-solid fa-trash"></i>
-                  </button>
+              </div>
+            </ng-container>
+          </ng-template>
+        </p-card>
+      </div>
+    </div>
+  </ng-container>
+</p-dialog>
+
+<p-dialog
+  header="Edición de campo"
+  [(visible)]="showFieldForm"
+  [modal]="true"
+  [style]="{ width: '50vw', height: '100%' }"
+  [draggable]="false"
+  [resizable]="false"
+  [contentStyle]="{ overflow: 'hidden', padding: '.7rem' }"
+  [dismissableMask]="true"
+  [maximizable]="true"
+  (onHide)="onColumnActionEnd()"
+>
+  <ng-container *ngIf="colSelected?.field">
+    <div class="flex flex-column h-full">
+      <div class="flex-grow-1 overflow-hidden">
+        <p-scrollPanel styleClass="w-full h-full">
+          <div class="flex flex-column gap-2 w-full mb-3">
+            <label>Label</label>
+            <input
+              pInputText
+              type="text"
+              [(ngModel)]="colSelected.field.label"
+            />
+          </div>
+          <div class="flex flex-column gap-2 w-full mb-3">
+            <label>Placeholder</label>
+            <input
+              pInputText
+              type="text"
+              [(ngModel)]="colSelected.field.placeholder"
+            />
+          </div>
+          <div class="flex flex-column gap-2 w-full mb-3">
+            <label>Tipo de dato</label>
+            <p-dropdown
+              [options]="dataTypeOptions"
+              [(ngModel)]="colSelected.field.dataType"
+              optionLabel="label"
+              optionValue="value"
+              [showClear]="true"
+              class="w-full"
+              styleClass="w-full"
+              appendTo="body"
+              (ngModelChange)="onDataTypeChange()"
+            ></p-dropdown>
+          </div>
+          <div class="flex flex-column gap-2 w-full mb-3">
+            <label>Tipo de campo</label>
+            <p-dropdown
+              [options]="controlTypeOptionsFiltered"
+              [(ngModel)]="colSelected.field.controlType"
+              optionLabel="label"
+              optionValue="value"
+              [showClear]="true"
+              class="w-full"
+              styleClass="w-full"
+              appendTo="body"
+            ></p-dropdown>
+          </div>
+          <ng-container *ngIf="colSelected.field.dataType === 'TEXT'">
+            <div class="flex flex-column gap-2 w-full mb-3">
+              <label>Longitud máxima</label>
+              <p-inputNumber
+                [showButtons]="true"
+                [(ngModel)]="colSelected.field.maxLength"
+                class="w-full"
+                styleClass="w-full"
+                inputStyleClass="w-full"
+              ></p-inputNumber>
+            </div>
+          </ng-container>
+          <ng-container *ngIf="colSelected.field.dataType === 'NUMBER'">
+            <div class="flex flex-column gap-2 w-full mb-3">
+              <label>Valor mínimo</label>
+              <p-inputNumber
+                [showButtons]="true"
+                [(ngModel)]="colSelected.field.min"
+                class="w-full"
+                styleClass="w-full"
+                inputStyleClass="w-full"
+              ></p-inputNumber>
+            </div>
+            <div class="flex flex-column gap-2 w-full mb-3">
+              <label>Valor máximo</label>
+              <p-inputNumber
+                [showButtons]="true"
+                [(ngModel)]="colSelected.field.max"
+                class="w-full"
+                styleClass="w-full"
+                inputStyleClass="w-full"
+              ></p-inputNumber>
+            </div>
+          </ng-container>
+          <div class="grid">
+            <div class="col text-center">
+              <div class="flex flex-column w-full mb-3">
+                <label class="mb-2">Requerido</label>
+                <p-inputSwitch
+                  [(ngModel)]="colSelected.field.required"
+                ></p-inputSwitch>
+              </div>
+            </div>
+            <div class="col text-center">
+              <div class="flex flex-column w-full mb-3">
+                <label class="mb-2">Solo lectura</label>
+                <p-inputSwitch
+                  [(ngModel)]="colSelected.field.readOnly"
+                ></p-inputSwitch>
+              </div>
+            </div>
+            <div class="col text-center">
+              <div class="flex flex-column w-full mb-3">
+                <label class="mb-2">Deshabilitado</label>
+                <p-inputSwitch
+                  [(ngModel)]="colSelected.field.disabled"
+                ></p-inputSwitch>
+              </div>
+            </div>
+            <ng-container *ngIf="colSelected.field.dataType === 'TEXT'">
+              <div class="col text-center">
+                <div class="flex flex-column w-full mb-3">
+                  <label class="mb-2">Multilinea</label>
+                  <p-inputSwitch
+                    [(ngModel)]="colSelected.field.multiline"
+                  ></p-inputSwitch>
                 </div>
               </div>
             </ng-container>
           </div>
-          <div class="d-flex gap-2">
-            <div class="flex-fill">
-              <button
-                type="button"
-                class="btn btn-outline-primary w-100"
-                (click)="addRow(group.grid.rows)"
-              >
-                Crear espacio <i class="fa-solid fa-plus"></i>
-              </button>
-            </div>
-            <div class="flex-fill">
-              <button
-                type="button"
-                class="btn btn-outline-success w-100"
-                (click)="addRowWithField(group.grid.rows)"
-              >
-                Crear campo <i class="fa-solid fa-plus"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </ng-container>
-  </div>
-  <button class="btn btn-primary">Enviar</button>
-</form>
-
-<div
-  class="modal fade"
-  id="exampleModal"
-  tabindex="-1"
-  aria-labelledby="exampleModalLabel"
-  aria-hidden="true"
->
-  <div class="modal-dialog">
-    <div class="modal-content" *ngIf="colSelected?.field">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="exampleModalLabel">
-          Edición de campo
-        </h1>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="modal"
-          aria-label="Close"
-        ></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3 form-floating">
-          <input
-            type="text"
-            class="form-control"
-            [(ngModel)]="colSelected.field.label"
-          />
-          <label for="exampleFormControlInput1">Label</label>
-        </div>
-        <div class="mb-3 form-floating">
-          <input
-            type="text"
-            class="form-control"
-            [(ngModel)]="colSelected.field.placeholder"
-          />
-          <label for="exampleFormControlInput1">Placeholder</label>
-        </div>
-        <div class="mb-3 form-floating">
-          <select
-            class="form-select"
-            aria-label="Default select example"
-            [(ngModel)]="colSelected.field.dataType"
-          >
-            <option
-              [value]="option.value"
-              *ngFor="let option of dataTypeOptions"
-            >
-              {{ option.label }}
-            </option>
-          </select>
-          <label for="exampleFormControlInput1">Tipo de dato</label>
-        </div>
-        <div class="mb-3 form-floating">
-          <select
-            class="form-select"
-            aria-label="Default select example"
-            [(ngModel)]="colSelected.field.controlType"
-          >
-            <option
-              [value]="option.value"
-              *ngFor="let option of controlTypeOptions"
-            >
-              {{ option.label }}
-            </option>
-          </select>
-          <label for="exampleFormControlInput1">Tipo de campo</label>
-        </div>
-        <ng-container *ngIf="colSelected.field.dataType === 'NUMBER'">
-          <div class="mb-3 form-floating">
+          <div class="flex flex-column gap-2 w-full mb-3">
+            <label>Texto de ayuda</label>
             <input
-              type="number"
-              class="form-control"
-              [(ngModel)]="colSelected.field.min"
+              pInputText
+              type="text"
+              [(ngModel)]="colSelected.field.helpText"
             />
-            <label for="exampleFormControlInput1">Valor mínimo</label>
           </div>
-          <div class="mb-3 form-floating">
-            <input
-              type="number"
-              class="form-control"
-              [(ngModel)]="colSelected.field.max"
-            />
-            <label for="exampleFormControlInput1">Valor máximo</label>
+          <div class="flex flex-column gap-2 w-full mb-3">
+            <label>Clases HTML</label>
+            <p-autoComplete
+              [(ngModel)]="htmlClassesSelected"
+              (ngModelChange)="onHTMLClassesChange()"
+              [suggestions]="htmlClassesFiltered"
+              (completeMethod)="searchHtmlClass($event)"
+              [multiple]="true"
+              [dropdown]="true"
+              field="label"
+              appendTo="body"
+            ></p-autoComplete>
           </div>
-        </ng-container>
-        <hr />
-        <form class="card">
-          <div class="card-header">
-            <h5>Preview</h5>
-          </div>
-          <div class="card-body">
-            <div class="mb-3">
-              <label for="exampleFormControlInput1" class="form-label">{{
-                colSelected.field.label
-              }}</label>
-              <div class="input-group">
-                <ng-container [ngSwitch]="colSelected.field.dataType">
-                  <ng-container *ngSwitchCase="'TEXT'">
-                    <ng-container *ngIf="!colSelected.field.multiline">
-                      <input
-                        [type]="colSelected.field.controlType"
-                        class="form-control"
-                        [placeholder]="colSelected.field.placeholder"
-                        [disabled]="colSelected.field.disabled"
-                        [readOnly]="colSelected.field.readOnly"
-                        [maxLength]="colSelected.field.maxLength"
-                      />
-                    </ng-container>
-                    <ng-container *ngIf="colSelected.field.multiline">
-                      <textarea
-                        class="form-control"
-                        rows="3"
-                        [placeholder]="colSelected.field.placeholder"
-                        [disabled]="colSelected.field.disabled"
-                        [readOnly]="colSelected.field.readOnly"
-                        [maxLength]="colSelected.field.maxLength"
-                      ></textarea>
-                    </ng-container>
-                  </ng-container>
-                  <ng-container *ngSwitchCase="'NUMBER'">
-                    <input
-                      [type]="colSelected.field.controlType"
-                      class="form-control"
-                      [placeholder]="colSelected.field.placeholder"
-                      [disabled]="colSelected.field.disabled"
-                      [readOnly]="colSelected.field.readOnly"
-                      [maxLength]="colSelected.field.maxLength"
-                      [min]="colSelected.field.min"
-                      [max]="colSelected.field.max"
-                    />
-                  </ng-container>
+        </p-scrollPanel>
+      </div>
+      <div class="flex flex-column">
+        <h5 class="mb-3">Preview</h5>
+        <form #dataFormModal="ngForm" (ngSubmit)="onSubmit()">
+          <div class="flex flex-column gap-2 w-full mb-3">
+            <label class="form-label">{{ colSelected.field.label }}</label>
+            <ng-container [ngSwitch]="colSelected.field.dataType">
+              <ng-container *ngSwitchCase="'TEXT'">
+                <ng-container *ngIf="!colSelected.field.multiline">
+                  <input
+                    pInputText
+                    [type]="colSelected.field.controlType"
+                    class="ng-dirty"
+                    [ngClass]="colSelected.field.htmlClass"
+                    [placeholder]="colSelected.field.placeholder"
+                    [required]="colSelected.field.required"
+                    [disabled]="colSelected.field.disabled"
+                    [readOnly]="colSelected.field.readOnly"
+                    [maxLength]="colSelected.field.maxLength"
+                    [(ngModel)]="colSelected.field.value"
+                    [ngModelOptions]="{ standalone: true }"
+                  />
                 </ng-container>
-              </div>
-            </div>
-            <button class="btn btn-primary">Comprobar validaciones</button>
+                <ng-container *ngIf="colSelected.field.multiline">
+                  <textarea
+                    pInputTextarea
+                    class="w-full ng-dirty"
+                    [ngClass]="colSelected.field.htmlClass"
+                    rows="3"
+                    [placeholder]="colSelected.field.placeholder"
+                    [required]="colSelected.field.required"
+                    [disabled]="colSelected.field.disabled"
+                    [readOnly]="colSelected.field.readOnly"
+                    [maxLength]="colSelected.field.maxLength"
+                    [(ngModel)]="colSelected.field.value"
+                    [ngModelOptions]="{ standalone: true }"
+                  ></textarea>
+                </ng-container>
+              </ng-container>
+              <ng-container *ngSwitchCase="'NUMBER'">
+                <p-inputNumber
+                  [showButtons]="true"
+                  class="w-full ng-dirty"
+                  styleClass="w-full ng-dirty"
+                  inputStyleClass="w-full ng-dirty"
+                  [ngClass]="colSelected.field.htmlClass"
+                  [placeholder]="colSelected.field.placeholder"
+                  [required]="colSelected.field.required"
+                  [min]="colSelected.field.min"
+                  [max]="colSelected.field.max"
+                  [disabled]="colSelected.field.disabled"
+                  [readonly]="colSelected.field.readOnly"
+                  [(ngModel)]="colSelected.field.value"
+                  [ngModelOptions]="{ standalone: true }"
+                ></p-inputNumber>
+              </ng-container>
+            </ng-container>
+            <small>
+              {{ colSelected.field.helpText }}
+            </small>
           </div>
         </form>
       </div>
     </div>
-  </div>
-</div>
+  </ng-container>
+</p-dialog>
